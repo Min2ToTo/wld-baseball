@@ -146,8 +146,8 @@ const App: React.FC = () => {
                 Please sign in with your World ID to play the game and manage your assets.
             </p>
             <IDKitWidget
-                app_id="app_staging_f76d2a4c330362f61b3695240c83a0a8" // This is a public staging app_id, safe to use
-                action="wld-baseball-login"
+                app_id="app_e18331f89f35a634aab08d5cdfc15b2c" // This is a public staging app_id, safe to use
+                action="game_login"
                 onSuccess={handleIDKitSuccess}
             >
                 {({ open }) => <Button onClick={open}>Sign in with World ID</Button>}
