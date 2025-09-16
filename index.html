@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WLD Baseball</title>
+    <style>
+      :root[data-theme='light'] {
+        --surface-base: 220 23% 96%;
+        --surface-raised: 0 0% 100%;
+        --surface-inset: 220 17% 91%;
+        --accent: 211 100% 35%;
+        --accent-hover: 211 100% 29%;
+        --text-base: 210 17% 15%;
+        --text-muted: 214 7% 45%;
+        --danger: 354 70% 54%;
+        --commentary: 211 100% 35%;
+        --success: 134 61% 41%;
+      }
+      :root[data-theme='dark'] {
+        --surface-base: 0 0% 7%;
+        --surface-raised: 0 0% 12%;
+        --surface-inset: 0 0% 17%;
+        --accent: 46 89% 50%;
+        --accent-hover: 46 92% 44%;
+        --text-base: 0 0% 88%;
+        --text-muted: 0 0% 53%;
+        --danger: 0 72% 67%;
+        --commentary: 46 89% 50%;
+        --success: 122 39% 49%;
+      }
+      :root[data-theme='dusk'] {
+        --surface-base: 220 14% 35%;
+        --surface-raised: 215 28% 52%;
+        --surface-inset: 222 14% 31%;
+        --accent: 43 68% 70%;
+        --accent-hover: 43 51% 65%;
+        --text-base: 220 27% 94%;
+        --text-muted: 220 33% 88%;
+        --danger: 354 44% 52%;
+        --commentary: 43 68% 70%;
+        --success: 88 33% 66%;
+      }
+      :root[data-theme='sakura'] {
+        --surface-base: 220 27% 94%;
+        --surface-raised: 0 0% 100%;
+        --surface-inset: 225 9% 91%;
+        --accent: 283 26% 64%;
+        --accent-hover: 283 19% 59%;
+        --text-base: 220 14% 35%;
+        --text-muted: 226 8% 49%;
+        --danger: 354 44% 52%;
+        --commentary: 283 26% 64%;
+        --success: 354 44% 52%;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        letter-spacing: -0.01em;
+        line-height: 1.6;
+        background-color: hsl(var(--surface-base));
+        color: hsl(var(--text-base));
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'surface-base': 'hsl(var(--surface-base) / <alpha-value>)',
+              'surface-raised': 'hsl(var(--surface-raised) / <alpha-value>)',
+              'surface-inset': 'hsl(var(--surface-inset) / <alpha-value>)',
+              'accent': 'hsl(var(--accent) / <alpha-value>)',
+              'accent-hover': 'hsl(var(--accent-hover) / <alpha-value>)',
+              'text-base': 'hsl(var(--text-base) / <alpha-value>)',
+              'text-muted': 'hsl(var(--text-muted) / <alpha-value>)',
+              'danger': 'hsl(var(--danger) / <alpha-value>)',
+              'commentary': 'hsl(var(--commentary) / <alpha-value>)',
+              'success': 'hsl(var(--success) / <alpha-value>)',
+            },
+            fontFamily: {
+              'sans': ['Inter', 'sans-serif'],
+              'orbitron': ['Orbitron', 'sans-serif'],
+            },
+          }
+        }
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "@worldcoin/idkit": "https://esm.sh/@worldcoin/idkit@1.5.0?external=react,react-dom",
+    "ethers": "https://esm.sh/ethers@6.13.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

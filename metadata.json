@@ -1,0 +1,5 @@
+{
+  "name": "WLD Baseball",
+  "description": "A classic number guessing game 'Number Baseball' with a modern twist. Players use logical reasoning to guess a 3-digit number, earning rewards and climbing the ranks in a competitive environment.",
+  "requestFramePermissions": []
+}
