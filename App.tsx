@@ -2,11 +2,11 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { GameScreen } from './components/GameScreen';
 import { MainScreen } from './components/MainScreen';
 import { GameContext, GameContextType } from './contexts/GameContext';
-import { GameMode, Language, IDKitResult, Theme } from './types';
+import { GameMode, Language, Theme } from './types';
 import { translations } from './i18n/translations';
 import { LanguageSelectionModal } from './components/modals/LanguageSelectionModal';
 import { HelpModal } from './components/modals/HelpModal';
-import worldID, { ISuccessResult } from '@worldcoin/id';
+import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit';
 import { Button } from './components/ui/Button';
 import { ethers } from 'ethers';
 import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI } from './constants';
@@ -51,27 +51,14 @@ const App: React.FC = () => {
         console.log('Skipping real balance fetch. Set mock WGT balance for debugging.');
     }, [walletAddress]);
     
-    const handleLogin = async () => {
-        try {
-            console.log("월드 ID 인증을 시작합니다...");
-            const result: ISuccessResult = await worldID.enable({
-                app_id: "app_e18331f89f35a634aab08d5cdfc15b2c", // 당신의 App ID
-                action: "game-login",                          // 당신의 Action ID
-                credential_types: ['orb'],                     // 인증 레벨
-            });
-            
-            console.log("월드 ID 인증 성공:", result);
-            // Debug: Use nullifier_hash as a temporary user identifier
-            if (result.nullifier_hash) {
-                const tempId = '0x' + result.nullifier_hash.slice(0, 40);
-                setWalletAddress(tempId);
-                console.log('Temporary user identifier set from nullifier_hash:', tempId);
-            } else {
-                console.error("nullifier_hash not found in result.");
-                alert("nullifier_hash not found. Login failed.");
-            }
-        } catch (error) {
-            console.error("월드 ID 인증 실패:", error);
+    const handleIDKitSuccess = (result: ISuccessResult) => {
+        // You can use result.nullifier_hash or other fields as needed
+        if (result.nullifier_hash) {
+            const tempId = '0x' + result.nullifier_hash.slice(0, 40);
+            setWalletAddress(tempId);
+            console.log('Temporary user identifier set from nullifier_hash:', tempId);
+        } else {
+            alert("nullifier_hash not found. Login failed.");
         }
     };
 
@@ -172,8 +159,14 @@ const App: React.FC = () => {
             <p className="my-8 text-text-muted">
                 Please sign in with your World ID to play the game and manage your assets.
             </p>
-            {/* IDKitWidget 대신 간단한 Button 사용 */}
-            <Button onClick={handleLogin}>Sign in with World ID</Button>
+            <IDKitWidget
+                app_id="app_e18331f89f35a634aab08d5cdfc15b2c"
+                action="game-login"
+                onSuccess={handleIDKitSuccess}
+                credential_types={['orb']}
+            >
+                {({ open }) => <Button onClick={open}>Sign in with World ID</Button>}
+            </IDKitWidget>
         </div>
     );
 
