@@ -6,7 +6,7 @@ import { GameMode, Language, IDKitResult, Theme } from './types';
 import { translations } from './i18n/translations';
 import { LanguageSelectionModal } from './components/modals/LanguageSelectionModal';
 import { HelpModal } from './components/modals/HelpModal';
-import { IDKitWidget } from '@worldcoin/idkit';
+import { worldID, ISuccessResult } from '@worldcoin/id';
 import { Button } from './components/ui/Button';
 import { ethers } from 'ethers';
 import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI } from './constants';
@@ -19,8 +19,6 @@ const App: React.FC = () => {
     const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
     const [theme, setTheme] = useState<Theme>('light');
-
-    // ★★★ 1. walletAddress 초기값을 null로 설정 ★★★
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [wgt, setWgt] = useState(0);
     
@@ -72,23 +70,37 @@ const App: React.FC = () => {
         fetchBalances();
     }, [walletAddress]);
     
-    const handleIDKitSuccess = (result: IDKitResult) => {
-        console.log("IDKit Authentication Success:", result);
-        let foundAddress: string | null = null;
-        if (result.credential_payload) {
-            for (const key in result.credential_payload) {
-                if (key.startsWith('eip155:')) {
-                    foundAddress = result.credential_payload[key].address;
-                    break;
+    const handleLogin = async () => {
+        try {
+            console.log("월드 ID 인증을 시작합니다...");
+            const result: ISuccessResult = await worldID.enable({
+                app_id: "app_e18331f89f35a634aab08d5cdfc15b2c", // 당신의 App ID
+                action: "game-login",                          // 당신의 Action ID
+                credential_types: ['orb'],                     // 인증 레벨
+            });
+            
+            console.log("월드 ID 인증 성공:", result);
+            let foundAddress: string | null = null;
+            if (result.credential_payload) {
+                for (const key in result.credential_payload) {
+                    if (key.startsWith('eip155:')) {
+                        foundAddress = result.credential_payload[key].address;
+                        break;
+                    }
                 }
             }
-        }
-        if (foundAddress) {
-            setWalletAddress(foundAddress);
-        } else {
-            console.error("Could not find wallet address in IDKit result.");
-            // 디버깅용 mock 주소는 제거하거나, alert으로 명확히 알림
-            alert("Could not extract a valid wallet address from the World ID proof.");
+
+            if (foundAddress) {
+                console.log("추출된 지갑 주소:", foundAddress);
+                setWalletAddress(foundAddress);
+            } else {
+                console.error("인증 결과에서 지갑 주소를 찾을 수 없습니다.");
+                alert("유효한 지갑 주소를 찾을 수 없어 로그인에 실패했습니다.");
+            }
+
+        } catch (error) {
+            console.error("월드 ID 인증 실패:", error);
+            // 사용자가 팝업을 닫는 등의 경우도 여기에 포함될 수 있습니다.
         }
     };
 
@@ -186,14 +198,8 @@ const App: React.FC = () => {
             <p className="my-8 text-text-muted">
                 Please sign in with your World ID to play the game and manage your assets.
             </p>
-            <IDKitWidget
-                app_id="app_e18331f89f35a634aab08d5cdfc15b2c"
-                action="game-login"
-                onSuccess={handleIDKitSuccess}
-                credential_types={['orb', 'device']} // Orb 또는 Device 인증 허용
-            >
-                {({ open }) => <Button onClick={open}>Sign in with World ID</Button>}
-            </IDKitWidget>
+            {/* IDKitWidget 대신 간단한 Button 사용 */}
+            <Button onClick={handleLogin}>Sign in with World ID</Button>
         </div>
     );
 
@@ -205,8 +211,7 @@ const App: React.FC = () => {
                     {!walletAddress ? (
                         <AuthView />
                     ) : screen === 'game' && gameMode ? (
-                        // ★ onGameEnd prop을 quitGame으로 전달
-                        <GameScreen mode={gameMode} onGameEnd={quitGame} />
+                        <GameScreen mode={gameMode} />
                     ) : (
                         <MainScreen />
                     )}
