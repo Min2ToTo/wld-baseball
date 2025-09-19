@@ -12,6 +12,10 @@ import { ethers } from 'ethers';
 import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI } from './constants';
 import { DAILY_CHALLENGE_WGT_REWARDS } from './constants';
 
+declare global {
+  interface Window { ethereum?: any }
+}
+
 const App: React.FC = () => {
     const [screen, setScreen] = useState<'main' | 'game'>('main');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
