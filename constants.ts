@@ -19,7 +19,7 @@ export const DAILY_CHALLENGE_WGT_REWARDS = [
 ];
 
 // 1. 여기에 Sepolia 테스트넷에 배포한 WGT 스마트 컨트랙트의 주소를 붙여넣으세요.
-export const WGT_CONTRACT_ADDRESS = "0x6e57A91229893fab9fFae1cE23e9939B0E2E68ce"; 
+export const WGT_CONTRACT_ADDRESS = "0x5f6CB9e86900d1F3C1577345677c83e72DF512E6"; 
 
 // 2. 여기에 Remix에서 복사한 ABI JSON 데이터를 붙여넣으세요.
 // TypeScript에서 ABI의 타입을 명확히 하기 위해 'as const'를 붙여주는 것이 좋습니다.
