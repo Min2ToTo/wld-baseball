@@ -6,7 +6,7 @@ import { GameMode, Language, IDKitResult, Theme } from './types';
 import { translations } from './i18n/translations';
 import { LanguageSelectionModal } from './components/modals/LanguageSelectionModal';
 import { HelpModal } from './components/modals/HelpModal';
-import { worldID, ISuccessResult } from '@worldcoin/id';
+import worldID, { ISuccessResult } from '@worldcoin/id';
 import { Button } from './components/ui/Button';
 import { ethers } from 'ethers';
 import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI } from './constants';
@@ -136,40 +136,43 @@ const App: React.FC = () => {
     }, []);
 
     // ★★★ 게임 종료 로직 중앙화 ★★★
-    const quitGame = useCallback(async (result: GameResult, hintsUsed: number) => {
-        console.log(`Game ended: ${result}, Hints used: ${hintsUsed}`);
-        
-        // --- 데일리 챌린지 결과 처리 ---
-        if (gameMode === 'daily') {
-            const rewardTable = DAILY_CHALLENGE_WGT_REWARDS;
-            let rewardAmount = 0;
-            if (result === 'homerun') {
-                // 이닝 정보가 필요. 이 부분은 useGameLogic에서 전달받아야 함.
-                // 임시로 1 WGT 지급으로 가정
-                rewardAmount = 1;
+    const quitGame = useCallback(
+        async (result: string, hintsUsed: number, finalInning: number) => {
+            console.log(`Game ended: ${result}, Hints used: ${hintsUsed}, Final Inning: ${finalInning}`);
+
+            if (gameMode === 'daily') {
+                let rewardAmount = 0;
+                if (result === 'homerun') {
+                    // finalInning은 1부터 시작, 배열 인덱스는 0부터 시작
+                    if (finalInning > 0 && finalInning <= DAILY_CHALLENGE_WGT_REWARDS.length) {
+                        rewardAmount = DAILY_CHALLENGE_WGT_REWARDS[finalInning - 1];
+                    }
+                }
+                const requestBody = {
+                    userAddress: walletAddress,
+                    hintsUsed,
+                    rewardAmount,
+                };
+                try {
+                    const response = await fetch('/api/adjust-balance', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody),
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'API request failed');
+                    console.log("API call successful:", data);
+                    // 필요하다면 fetchBalances() 호출
+                } catch (error) {
+                    console.error("API call failed:", error);
+                }
             }
 
-            const requestBody = { userAddress: walletAddress, hintsUsed, rewardAmount };
-            try {
-                const response = await fetch('/api/adjust-balance', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody),
-                });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.message || 'API request failed');
-                
-                console.log("API call successful:", data);
-                // 성공 후 잔액 다시 조회
-                // fetchBalances(); // fetchBalances를 App.tsx로 가져와야 함
-            } catch (error) {
-                console.error("API call failed:", error);
-            }
-        }
-        
-        setGameMode(null);
-        setScreen('main');
-    }, [gameMode, walletAddress]);
+            setGameMode(null);
+            setScreen('main');
+        },
+        [gameMode, walletAddress]
+    );
 
     const contextValue: GameContextType = useMemo(() => ({
         wgt,

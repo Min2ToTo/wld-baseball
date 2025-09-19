@@ -1,22 +1,30 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { GuessResult, GameMode, GameResult } from '../types';
 import { SECRET_CODE_LENGTH, MAX_GUESSES } from '../constants';
 import { useGame } from '../contexts/GameContext';
 
-const generateSecretCode = (): number[] => { /* ... 동일 ... */ };
+const generateSecretCode = (): number[] => {
+    const digits = Array.from({ length: 10 }, (_, i) => i);
+    const code: number[] = [];
+    while (code.length < SECRET_CODE_LENGTH) {
+        const idx = Math.floor(Math.random() * digits.length);
+        code.push(digits.splice(idx, 1)[0]);
+    }
+    return code;
+};
 
-// ★ quitGame 콜백을 다시 받도록 변경 (결과만 전달)
-export const useGameLogic = (mode: GameMode, quitGame: (result: GameResult, hintsUsed: number) => void) => {
-    const { wgt, t, walletAddress } = useGame();
-    const [secretCode, setSecretCode] = useState<number[]>([]);
+type QuitGameCallback = (result: GameResult, hintsUsed: number, finalInning: number) => void;
+
+// Pure game logic hook: no API/localStorage side effects
+export const useGameLogic = (mode: GameMode, quitGame: QuitGameCallback) => {
+    const { wgt, t } = useGame();
+    const [secretCode, setSecretCode] = useState<number[]>(generateSecretCode());
     const [guesses, setGuesses] = useState<GuessResult[]>([]);
     const [currentGuess, setCurrentGuess] = useState<number[]>([]);
     const [gameResult, setGameResult] = useState<GameResult>(null);
     const [revealedHints, setRevealedHints] = useState<number[]>([]);
     const [hintsUsed, setHintsUsed] = useState(0);
-    const [commentary, setCommentary] = useState<string>('');
-
-    const storageKey = `wld-baseball-game-${walletAddress}-${mode}`;
+    const [commentary, setCommentary] = useState<string>(t('commentary.ready'));
 
     const resetGame = useCallback(() => {
         setSecretCode(generateSecretCode());
@@ -28,74 +36,61 @@ export const useGameLogic = (mode: GameMode, quitGame: (result: GameResult, hint
         setCommentary(t('commentary.ready'));
     }, [t]);
 
-    // ★ 이어하기 로직은 GameScreen에서 처리하도록 단순화
-    useEffect(() => {
-        const savedGame = localStorage.getItem(storageKey);
-        if (mode === 'daily' && savedGame) {
-            const { secretCode: savedSecret, guesses: savedGuesses, revealedHints: savedRevealed, hintsUsed: savedHints } = JSON.parse(savedGame);
-            setSecretCode(savedSecret);
-            setGuesses(savedGuesses);
-            setRevealedHints(savedRevealed);
-            setHintsUsed(savedHints);
-        } else {
-            resetGame();
-        }
-    }, [mode, storageKey, resetGame]);
-
-    // ★ 상태 저장 로직도 GameScreen에서 처리하도록 단순화
-    useEffect(() => {
-        if (mode === 'daily' && secretCode.length > 0 && !gameResult) {
-            const gameState = JSON.stringify({ secretCode, guesses, revealedHints, hintsUsed });
-            localStorage.setItem(storageKey, gameState);
-        }
-    }, [guesses, secretCode, revealedHints, hintsUsed, storageKey, gameResult, mode]);
+    const updateCommentary = useCallback((hits: number, fouls: number, strikes: number) => {
+        if (hits > 0) setCommentary(t('commentary.dynamic.hit', { hits }));
+        else if (fouls > 0) setCommentary(t('commentary.dynamic.foul', { fouls }));
+        else if (strikes > 0) setCommentary(t('commentary.dynamic.strike', { strikes }));
+        else setCommentary(t('commentary.dynamic.nothing'));
+    }, [t]);
 
     const endGame = useCallback((result: GameResult) => {
         setGameResult(result);
-        if (mode === 'daily') {
-            localStorage.removeItem(storageKey);
-        }
-        // ★ API 호출 없이, 결과만 부모에게 전달
-        quitGame(result, hintsUsed);
-    }, [mode, storageKey, hintsUsed, quitGame]);
+        const finalInning = guesses.length + (result === 'homerun' ? 1 : 0);
+        quitGame(result, hintsUsed, finalInning);
+    }, [guesses.length, hintsUsed, quitGame]);
 
     const handleGuessSubmit = useCallback(() => {
         if (currentGuess.length !== SECRET_CODE_LENGTH || gameResult) return;
-        let hits = 0; let fouls = 0;
+
+        let hits = 0;
+        let fouls = 0;
+
         currentGuess.forEach((digit, index) => {
-            if (digit === secretCode[index]) hits++;
-            else if (secretCode.includes(digit)) fouls++;
+            if (digit === secretCode[index]) {
+                hits++;
+            } else if (secretCode.includes(digit)) {
+                fouls++;
+            }
         });
 
         const strikes = hits === 0 && fouls === 0 ? 1 : 0;
-        const newGuessResult: GuessResult = { guess: currentGuess, hits, fouls, strikes };
-        setGuesses(prev => [...prev, newGuessResult]);
+
+        const newGuessResult: GuessResult = {
+            guess: [...currentGuess],
+            hits,
+            fouls,
+            strikes,
+        };
+
+        setGuesses(prevGuesses => [...prevGuesses, newGuessResult]);
         setCurrentGuess([]);
 
         if (hits === SECRET_CODE_LENGTH) {
             setCommentary(t('commentary.dynamic.homerun'));
             endGame('homerun');
-        } else if (guesses.length + 1 >= MAX_GUESSES) {
-            setCommentary(t('commentary.dynamic.strikeout'));
-            endGame('strikeout');
         } else {
+            if (guesses.length + 1 >= MAX_GUESSES) {
+                setCommentary(t('commentary.dynamic.strikeout'));
+                endGame('strikeout');
             } else {
                 updateCommentary(hits, fouls, strikes);
             }
         }
-    }, [currentGuess, secretCode, guesses, gameResult, endGame, t]);
+    }, [currentGuess, secretCode, guesses.length, gameResult, endGame, updateCommentary, t]);
 
     const useHint = useCallback(() => {
-        if (mode !== 'daily' || gameResult) return;
-
-        if (wgt < HINT_COST) {
-            setCommentary(t('commentary.notEnoughWgt'));
-            return;
-        }
-        if (hintsUsed >= MAX_HINTS) {
-            setCommentary(t('commentary.noMoreHintInGame'));
-            return;
-        }
+        // Example: you may want to check for hint limits, etc.
+        if (gameResult) return;
 
         const availableDigits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
         const nonSecretDigits = availableDigits.filter(
@@ -108,7 +103,7 @@ export const useGameLogic = (mode: GameMode, quitGame: (result: GameResult, hint
             setHintsUsed(prev => prev + 1);
             setCommentary(t('commentary.dynamic.hintUsed', { hint: hint }));
         }
-    }, [wgt, hintsUsed, gameResult, secretCode, revealedHints, t, mode]);
+    }, [gameResult, secretCode, revealedHints, t]);
 
     return {
         secretCode,

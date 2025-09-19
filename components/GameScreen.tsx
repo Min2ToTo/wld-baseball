@@ -1,7 +1,6 @@
-
 import React, { useCallback, useState } from 'react';
 import { useGameLogic } from '../hooks/useGameLogic';
-import { GameMode, GuessResult } from '../types';
+import { GameMode, GuessResult, GameResult } from '../types';
 import { useGame } from '../contexts/GameContext';
 import { Keypad } from './ui/Keypad';
 import { Button } from './ui/Button';
@@ -11,7 +10,7 @@ import { SECRET_CODE_LENGTH, MAX_GUESSES, HINT_COST, MAX_HINTS } from '../consta
 
 interface GameScreenProps {
     mode: GameMode;
-    onGameEnd: (result: GameResult, hintsUsed: number) => void;
+    onGameEnd: (result: GameResult, hintsUsed: number, finalInning: number) => void;
 }
 
 const GuessDisplay: React.FC<{ guess: number[] }> = ({ guess }) => (
@@ -59,19 +58,23 @@ const HistoryRow: React.FC<{ result: GuessResult, inning: number, t: (key: strin
 );
 
 export const GameScreen: React.FC<GameScreenProps> = ({ mode, onGameEnd }) => {
-    const { quitGame } = useGame(); // GameContext의 quitGame은 이제 App.tsx의 quitGame
+    const { t } = useGame();
 
-    // ★ 게임 종료 시 onGameEnd를 호출하도록 quitGame 콜백을 전달
+    // Pass onGameEnd directly to useGameLogic as quitGame callback
     const {
         guesses,
         currentGuess,
         setCurrentGuess,
         gameResult,
         revealedHints,
+        hintsUsed,
         handleGuessSubmit,
         useHint,
+        resetGame,
         commentary,
+        secretCode,
     } = useGameLogic(mode, onGameEnd);
+
     const [isGiveUpModalOpen, setIsGiveUpModalOpen] = useState(false);
 
     const handleKeyPress = useCallback((key: number | 'backspace' | 'enter') => {
@@ -83,17 +86,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onGameEnd }) => {
         } else if (typeof key === 'number' && currentGuess.length < SECRET_CODE_LENGTH && !currentGuess.includes(key)) {
             setCurrentGuess(prev => [...prev, key]);
         }
-    }, [currentGuess, handleGuessSubmit, gameResult]);
-    
+    }, [currentGuess, handleGuessSubmit, gameResult, setCurrentGuess]);
+
+    // Give up: treat as strikeout and call onGameEnd with correct arguments
     const handleConfirmGiveUp = () => {
-        const cost = hintsUsed * HINT_COST;
-        if (mode === 'daily' && cost > 0) {
-            setWgt(prev => Math.max(0, prev - cost));
-        }
         setIsGiveUpModalOpen(false);
-        quitGame();
+        onGameEnd('strikeout', hintsUsed, guesses.length + 1);
     };
-    
+
     return (
         <div className="p-4 flex flex-col h-full">
             <header className="flex justify-between items-center mb-2">
