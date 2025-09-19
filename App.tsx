@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { GameScreen } from './components/GameScreen';
 import { MainScreen } from './components/MainScreen';
@@ -20,7 +19,7 @@ const App: React.FC = () => {
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
     const [theme, setTheme] = useState<Theme>('light');
 
-    // World ID and Assets
+    // ★★★ 1. walletAddress 초기값을 null로 설정 ★★★
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [wgt, setWgt] = useState(0);
     
@@ -45,22 +44,18 @@ const App: React.FC = () => {
 
     // Fetch user balances when wallet address is available
     useEffect(() => {
+        // ★ walletAddress가 null이면 아무것도 하지 않음
         if (!walletAddress) return;
 
         const fetchBalances = async () => {
             console.log(`Attempting to fetch balances for ${walletAddress}...`);
             try {
-                // 1. 유저의 브라우저 지갑(MetaMask, World App Wallet 등)과 연결합니다.
                 if (!window.ethereum) {
                     alert("Please install a web3 wallet like MetaMask or use the World App.");
                     return;
                 }
                 const provider = new ethers.BrowserProvider(window.ethereum);
-                
-                // 2. WGT_CONTRACT_ADDRESS와 WGT_CONTRACT_ABI는 이제 constants.ts에서 가져옵니다.
                 const contract = new ethers.Contract(WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, provider);
-                
-                // 3. 잔액 조회 (이 부분은 동일)
                 const wgtBalance = await contract.balanceOf(walletAddress);
                 const formattedBalance = Number(ethers.formatUnits(wgtBalance, 18));
                 
@@ -68,8 +63,7 @@ const App: React.FC = () => {
                 setWgt(formattedBalance);
 
             } catch (error) {
-                console.error("Could not fetch balance from contract. Please ensure your wallet is connected to the Sepolia testnet and the contract address is correct.", error);
-                // 에러 발생 시에는 mock 데이터를 사용하지 않고, 0으로 설정하여 문제가 있음을 명확히 보여줍니다.
+                console.error("Could not fetch balance from contract.", error);
                 setWgt(0); 
             }
         };
@@ -79,10 +73,6 @@ const App: React.FC = () => {
     
     const handleIDKitSuccess = (result: IDKitResult) => {
         console.log("IDKit Authentication Success:", result);
-        // 월드코인 서버가 반환하는 credential_payload에서 실제 지갑 주소를 추출합니다.
-        // 이 구조는 월드코인 문서나 실제 반환값을 보고 정확히 확인해야 할 수 있습니다.
-        // 일반적으로 'eip155:1' (이더리움 메인넷) 또는 'eip155:84531' (OP Sepolia)과 같은 키를 가집니다.
-        // 아래 코드는 가장 가능성 높은 예시입니다.
         let foundAddress: string | null = null;
         if (result.credential_payload) {
             for (const key in result.credential_payload) {
@@ -92,16 +82,12 @@ const App: React.FC = () => {
                 }
             }
         }
-
         if (foundAddress) {
-            console.log("Extracted Wallet Address:", foundAddress);
             setWalletAddress(foundAddress);
         } else {
             console.error("Could not find wallet address in IDKit result.");
-            // 임시 방편: 지갑 주소를 찾지 못했을 경우 nullifier_hash를 사용 (디버깅용)
-            const mockAddress = `0x${result.nullifier_hash.slice(0, 40)}`;
-            setWalletAddress(mockAddress);
-            alert("Wallet address not found in payload, using mock address for now.");
+            // 디버깅용 mock 주소는 제거하거나, alert으로 명확히 알림
+            alert("Could not extract a valid wallet address from the World ID proof.");
         }
     };
 
@@ -159,6 +145,7 @@ const App: React.FC = () => {
         setTheme,
     }), [wgt, startGame, quitGame, t, language, isLanguageModalOpen, isHelpModalOpen, walletAddress, theme]);
 
+    // ★★★ 2. 로그인 전용 뷰(컴포넌트) 정의 ★★★
     const AuthView = () => (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <h1 className="text-4xl font-bold text-center font-orbitron">
@@ -168,10 +155,10 @@ const App: React.FC = () => {
                 Please sign in with your World ID to play the game and manage your assets.
             </p>
             <IDKitWidget
-                app_id="app_e18331f89f35a634aab08d5cdfc15b2c" // 당신의 Client ID
-                action="game-login" // ★★★★★ 여기에 방금 생성한 Identifier 값을 입력!
+                app_id="app_e18331f89f35a634aab08d5cdfc15b2c"
+                action="game_login"
                 onSuccess={handleIDKitSuccess}
-                credential_types={['document']}
+                credential_types={['orb', 'device']} // Orb 또는 Device 인증 허용
             >
                 {({ open }) => <Button onClick={open}>Sign in with World ID</Button>}
             </IDKitWidget>
@@ -182,6 +169,7 @@ const App: React.FC = () => {
         <GameContext.Provider value={contextValue}>
             <div className="min-h-screen bg-surface-base font-sans flex items-center justify-center p-4">
                 <div className="w-full max-w-md mx-auto bg-surface-raised rounded-2xl shadow-2xl overflow-hidden border-2 border-surface-inset flex flex-col" style={{height: '90vh', maxHeight: '800px'}}>
+                    {/* ★★★ 3. 로그인 여부에 따라 렌더링 분기 ★★★ */}
                     {!walletAddress ? (
                         <AuthView />
                     ) : screen === 'game' && gameMode ? (
