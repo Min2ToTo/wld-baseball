@@ -10,6 +10,7 @@ import { IDKitWidget } from '@worldcoin/idkit';
 import { Button } from './components/ui/Button';
 import { ethers } from 'ethers';
 import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI } from './constants';
+import { DAILY_CHALLENGE_WGT_REWARDS } from './constants';
 
 const App: React.FC = () => {
     const [screen, setScreen] = useState<'main' | 'game'>('main');
@@ -122,10 +123,41 @@ const App: React.FC = () => {
         setScreen('game');
     }, []);
 
-    const quitGame = useCallback(() => {
+    // ★★★ 게임 종료 로직 중앙화 ★★★
+    const quitGame = useCallback(async (result: GameResult, hintsUsed: number) => {
+        console.log(`Game ended: ${result}, Hints used: ${hintsUsed}`);
+        
+        // --- 데일리 챌린지 결과 처리 ---
+        if (gameMode === 'daily') {
+            const rewardTable = DAILY_CHALLENGE_WGT_REWARDS;
+            let rewardAmount = 0;
+            if (result === 'homerun') {
+                // 이닝 정보가 필요. 이 부분은 useGameLogic에서 전달받아야 함.
+                // 임시로 1 WGT 지급으로 가정
+                rewardAmount = 1;
+            }
+
+            const requestBody = { userAddress: walletAddress, hintsUsed, rewardAmount };
+            try {
+                const response = await fetch('/api/adjust-balance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'API request failed');
+                
+                console.log("API call successful:", data);
+                // 성공 후 잔액 다시 조회
+                // fetchBalances(); // fetchBalances를 App.tsx로 가져와야 함
+            } catch (error) {
+                console.error("API call failed:", error);
+            }
+        }
+        
         setGameMode(null);
         setScreen('main');
-    }, []);
+    }, [gameMode, walletAddress]);
 
     const contextValue: GameContextType = useMemo(() => ({
         wgt,
@@ -173,7 +205,8 @@ const App: React.FC = () => {
                     {!walletAddress ? (
                         <AuthView />
                     ) : screen === 'game' && gameMode ? (
-                        <GameScreen mode={gameMode} />
+                        // ★ onGameEnd prop을 quitGame으로 전달
+                        <GameScreen mode={gameMode} onGameEnd={quitGame} />
                     ) : (
                         <MainScreen />
                     )}

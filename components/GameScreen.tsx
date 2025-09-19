@@ -11,6 +11,7 @@ import { SECRET_CODE_LENGTH, MAX_GUESSES, HINT_COST, MAX_HINTS } from '../consta
 
 interface GameScreenProps {
     mode: GameMode;
+    onGameEnd: (result: GameResult, hintsUsed: number) => void;
 }
 
 const GuessDisplay: React.FC<{ guess: number[] }> = ({ guess }) => (
@@ -57,20 +58,20 @@ const HistoryRow: React.FC<{ result: GuessResult, inning: number, t: (key: strin
     </div>
 );
 
-export const GameScreen: React.FC<GameScreenProps> = ({ mode }) => {
-    const { quitGame, t, setWgt } = useGame();
+export const GameScreen: React.FC<GameScreenProps> = ({ mode, onGameEnd }) => {
+    const { quitGame } = useGame(); // GameContext의 quitGame은 이제 App.tsx의 quitGame
+
+    // ★ 게임 종료 시 onGameEnd를 호출하도록 quitGame 콜백을 전달
     const {
-        secretCode,
         guesses,
         currentGuess,
         setCurrentGuess,
         gameResult,
         revealedHints,
-        hintsUsed,
         handleGuessSubmit,
         useHint,
         commentary,
-    } = useGameLogic(mode);
+    } = useGameLogic(mode, onGameEnd);
     const [isGiveUpModalOpen, setIsGiveUpModalOpen] = useState(false);
 
     const handleKeyPress = useCallback((key: number | 'backspace' | 'enter') => {
