@@ -188,7 +188,7 @@ const App: React.FC = () => {
             </p>
             <IDKitWidget
                 app_id="app_e18331f89f35a634aab08d5cdfc15b2c"
-                action="game_login"
+                action="game-login"
                 onSuccess={handleIDKitSuccess}
                 credential_types={['orb', 'device']} // Orb 또는 Device 인증 허용
             >
