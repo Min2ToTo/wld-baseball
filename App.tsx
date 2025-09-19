@@ -168,9 +168,10 @@ const App: React.FC = () => {
                 Please sign in with your World ID to play the game and manage your assets.
             </p>
             <IDKitWidget
-                app_id="app_e18331f89f35a634aab08d5cdfc15b2c" // This is a public staging app_id, safe to use
-                action="game_login"
+                app_id="app_e18331f89f35a634aab08d5cdfc15b2c" // 당신의 Client ID
+                action="game-login" // ★★★★★ 여기에 방금 생성한 Identifier 값을 입력!
                 onSuccess={handleIDKitSuccess}
+                credential_types={['document']}
             >
                 {({ open }) => <Button onClick={open}>Sign in with World ID</Button>}
             </IDKitWidget>
