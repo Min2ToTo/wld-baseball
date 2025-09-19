@@ -9,7 +9,7 @@ import { HelpModal } from './components/modals/HelpModal';
 import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit';
 import { Button } from './components/ui/Button';
 import { ethers } from 'ethers';
-import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI } from './constants';
+import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, SEPOLIA_RPC_URL } from './constants';
 import { DAILY_CHALLENGE_WGT_REWARDS } from './constants';
 
 declare global {
@@ -53,12 +53,10 @@ const App: React.FC = () => {
         const fetchBalances = async () => {
             console.log(`Attempting to fetch balances for ${walletAddress}...`);
             try {
-                if (!window.ethereum) {
-                    alert("Please install a web3 wallet or use the World App.");
-                    return;
-                }
-                const provider = new ethers.BrowserProvider(window.ethereum);
-                // Now using the imported constants
+                // Use JsonRpcProvider for a direct, read-only connection to the blockchain,
+                // which is compatible with the World App environment.
+                const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC_URL);
+                
                 const contract = new ethers.Contract(WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, provider);
                 
                 const wgtBalance = await contract.balanceOf(walletAddress);
@@ -68,8 +66,8 @@ const App: React.FC = () => {
                 setWgt(formattedBalance);
 
             } catch (error) {
-                console.error("Could not fetch balance from contract. Check wallet connection and constants.", error);
-                setWgt(0); // Set to 0 on error
+                console.error("Could not fetch balance from contract. Check RPC URL and contract address.", error);
+                setWgt(0); 
             }
         };
 
