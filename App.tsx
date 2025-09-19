@@ -42,13 +42,34 @@ const App: React.FC = () => {
     }, [theme]);
 
     // Fetch user balances when wallet address is available
+
     useEffect(() => {
-        // ★ walletAddress가 null이면 아무것도 하지 않음
         if (!walletAddress) return;
 
-        // Debug: skip real balance fetch, set mock value
-        setWgt(150);
-        console.log('Skipping real balance fetch. Set mock WGT balance for debugging.');
+        const fetchBalances = async () => {
+            console.log(`Attempting to fetch balances for ${walletAddress}...`);
+            try {
+                if (!window.ethereum) {
+                    alert("Please install a web3 wallet or use the World App.");
+                    return;
+                }
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                // Now using the imported constants
+                const contract = new ethers.Contract(WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, provider);
+                
+                const wgtBalance = await contract.balanceOf(walletAddress);
+                const formattedBalance = Number(ethers.formatUnits(wgtBalance, 18));
+                
+                console.log('Successfully fetched balance from contract:', formattedBalance);
+                setWgt(formattedBalance);
+
+            } catch (error) {
+                console.error("Could not fetch balance from contract. Check wallet connection and constants.", error);
+                setWgt(0); // Set to 0 on error
+            }
+        };
+
+        fetchBalances();
     }, [walletAddress]);
     
     const handleIDKitSuccess = (result: ISuccessResult) => {
