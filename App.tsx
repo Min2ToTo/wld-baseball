@@ -46,28 +46,9 @@ const App: React.FC = () => {
         // ★ walletAddress가 null이면 아무것도 하지 않음
         if (!walletAddress) return;
 
-        const fetchBalances = async () => {
-            console.log(`Attempting to fetch balances for ${walletAddress}...`);
-            try {
-                if (!window.ethereum) {
-                    alert("Please install a web3 wallet like MetaMask or use the World App.");
-                    return;
-                }
-                const provider = new ethers.BrowserProvider(window.ethereum);
-                const contract = new ethers.Contract(WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, provider);
-                const wgtBalance = await contract.balanceOf(walletAddress);
-                const formattedBalance = Number(ethers.formatUnits(wgtBalance, 18));
-                
-                console.log('Successfully fetched balance from contract:', formattedBalance);
-                setWgt(formattedBalance);
-
-            } catch (error) {
-                console.error("Could not fetch balance from contract.", error);
-                setWgt(0); 
-            }
-        };
-
-        fetchBalances();
+        // Debug: skip real balance fetch, set mock value
+        setWgt(150);
+        console.log('Skipping real balance fetch. Set mock WGT balance for debugging.');
     }, [walletAddress]);
     
     const handleLogin = async () => {
@@ -80,27 +61,17 @@ const App: React.FC = () => {
             });
             
             console.log("월드 ID 인증 성공:", result);
-            let foundAddress: string | null = null;
-            if (result.credential_payload) {
-                for (const key in result.credential_payload) {
-                    if (key.startsWith('eip155:')) {
-                        foundAddress = result.credential_payload[key].address;
-                        break;
-                    }
-                }
-            }
-
-            if (foundAddress) {
-                console.log("추출된 지갑 주소:", foundAddress);
-                setWalletAddress(foundAddress);
+            // Debug: Use nullifier_hash as a temporary user identifier
+            if (result.nullifier_hash) {
+                const tempId = '0x' + result.nullifier_hash.slice(0, 40);
+                setWalletAddress(tempId);
+                console.log('Temporary user identifier set from nullifier_hash:', tempId);
             } else {
-                console.error("인증 결과에서 지갑 주소를 찾을 수 없습니다.");
-                alert("유효한 지갑 주소를 찾을 수 없어 로그인에 실패했습니다.");
+                console.error("nullifier_hash not found in result.");
+                alert("nullifier_hash not found. Login failed.");
             }
-
         } catch (error) {
             console.error("월드 ID 인증 실패:", error);
-            // 사용자가 팝업을 닫는 등의 경우도 여기에 포함될 수 있습니다.
         }
     };
 
