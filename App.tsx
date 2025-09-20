@@ -11,7 +11,7 @@ import { Button } from './components/ui/Button';
 import { ethers } from 'ethers';
 import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, SEPOLIA_RPC_URL } from './constants';
 import { DAILY_CHALLENGE_WGT_REWARDS, WGT_MODE_REWARDS } from './constants';
-import { LoadingSpinner } from './components/common'; // adjust path if needed
+import { LoadingSpinner } from './components/common';
 
 declare global {
   interface Window { ethereum?: any }
@@ -240,7 +240,9 @@ const App: React.FC = () => {
             <div className="min-h-screen bg-surface-base font-sans flex items-center justify-center p-4">
                 <div className="w-full max-w-md mx-auto bg-surface-raised rounded-2xl shadow-2xl overflow-hidden border-2 border-surface-inset flex flex-col" style={{height: '90vh', maxHeight: '800px'}}>
                     {isLoading ? (
-                        <LoadingView />
+                        <div className="flex items-center justify-center h-full">
+                            <LoadingSpinner />
+                        </div>
                     ) : !walletAddress ? (
                         <AuthView />
                     ) : screen === 'game' && gameMode ? (
