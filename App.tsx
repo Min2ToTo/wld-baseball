@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { IDKitWidget, ISuccessResult, IDKitWidgetRef } from '@worldcoin/idkit';
 import { LoadingSpinner } from './components/common';
@@ -18,7 +18,7 @@ declare global {
 
 const App: React.FC = () => {
     // --- State ---
-    const [isLoading, setIsLoading] = useState(false); // Default to false
+    const [isLoading, setIsLoading] = useState(true); // Must start as true
     const [screen, setScreen] = useState<'main' | 'game'>('main');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [language, setLanguage] = useState<Language>('en');
@@ -30,10 +30,21 @@ const App: React.FC = () => {
     const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
     const idKitRef = useRef<IDKitWidgetRef>(null);
 
+    // --- Initial loading effect ---
+    useEffect(() => {
+        // This effect runs once on app startup to check auth status.
+        // For now, we simulate that the user is always logged out initially.
+        console.log("App mounted, determining auth state...");
+        setTimeout(() => {
+            setIsLoading(false);
+            console.log("Initial check complete. User is not logged in.");
+        }, 1000); // Simulate a 1-second check
+    }, []);
+
     // --- handleIDKitSuccess manages authentication and data fetching ---
     const handleIDKitSuccess = async (result: ISuccessResult) => {
         console.log("IDKit Authentication Success:", result);
-        setIsLoading(true); // Start loading AFTER user verifies
+        setIsLoading(true); // Show spinner AFTER user verifies
 
         let foundAddress: string | null = null;
         if (result.credential_payload) {
@@ -66,7 +77,7 @@ const App: React.FC = () => {
         } else {
             console.error("Could not find wallet address in IDKit result.");
             alert("Could not extract a valid wallet address.");
-            setIsLoading(false); // Stop loading on failure
+            setIsLoading(false); // Hide spinner on failure
         }
     };
 
@@ -181,6 +192,13 @@ const App: React.FC = () => {
         setTheme,
     }), [wgt, startGame, quitGame, t, language, isLanguageModalOpen, isHelpModalOpen, walletAddress, theme]);
 
+    // --- LoadingView ---
+    const LoadingView = () => (
+        <div className="flex items-center justify-center h-full">
+            <LoadingSpinner />
+        </div>
+    );
+
     // --- AuthView ---
     const AuthView = () => (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -212,9 +230,7 @@ const App: React.FC = () => {
             <div className="min-h-screen bg-surface-base font-sans flex items-center justify-center p-4">
                 <div className="w-full max-w-md mx-auto bg-surface-raised rounded-2xl shadow-2xl overflow-hidden border-2 border-surface-inset flex flex-col" style={{height: '90vh', maxHeight: '800px'}}>
                     {isLoading ? (
-                        <div className="flex items-center justify-center h-full">
-                            <LoadingSpinner />
-                        </div>
+                        <LoadingView />
                     ) : !walletAddress ? (
                         <AuthView />
                     ) : screen === 'game' && gameMode ? (
