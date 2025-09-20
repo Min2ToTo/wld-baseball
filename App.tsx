@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { GameScreen } from './components/GameScreen';
 import { MainScreen } from './components/MainScreen';
 import { GameContext, GameContextType } from './contexts/GameContext';
@@ -6,11 +6,11 @@ import { GameMode, Language, Theme } from './types';
 import { translations } from './i18n/translations';
 import { LanguageSelectionModal } from './components/modals/LanguageSelectionModal';
 import { HelpModal } from './components/modals/HelpModal';
-import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit';
+import { IDKitWidget, ISuccessResult, IDKitWidgetRef } from '@worldcoin/idkit';
 import { Button } from './components/ui/Button';
 import { ethers } from 'ethers';
 import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, SEPOLIA_RPC_URL } from './constants';
-import { DAILY_CHALLENGE_WGT_REWARDS } from './constants';
+import { DAILY_CHALLENGE_WGT_REWARDS, WGT_MODE_REWARDS } from './constants';
 
 declare global {
   interface Window { ethereum?: any }
@@ -25,6 +25,8 @@ const App: React.FC = () => {
     const [theme, setTheme] = useState<Theme>('light');
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [wgt, setWgt] = useState(0);
+    const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
+    const idKitRef = useRef<IDKitWidgetRef>(null);
     
     useEffect(() => {
         const savedLang = localStorage.getItem('wld-baseball-lang') as Language;
@@ -45,16 +47,12 @@ const App: React.FC = () => {
         localStorage.setItem('wld-baseball-theme', theme);
     }, [theme]);
 
-    // Fetch user balances when wallet address is available
-
     useEffect(() => {
         if (!walletAddress) return;
 
         const fetchBalances = async () => {
             console.log(`Attempting to fetch balances for ${walletAddress}...`);
             try {
-                // Use JsonRpcProvider for a direct, read-only connection to the blockchain,
-                // which is compatible with the World App environment.
                 const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC_URL);
                 
                 const contract = new ethers.Contract(WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, provider);
@@ -75,7 +73,6 @@ const App: React.FC = () => {
     }, [walletAddress]);
     
     const handleIDKitSuccess = (result: ISuccessResult) => {
-        // You can use result.nullifier_hash or other fields as needed
         if (result.nullifier_hash) {
             const tempId = '0x' + result.nullifier_hash.slice(0, 40);
             setWalletAddress(tempId);
@@ -116,7 +113,6 @@ const App: React.FC = () => {
         setScreen('game');
     }, []);
 
-    // ★★★ 게임 종료 로직 중앙화 ★★★
     const quitGame = useCallback(
         async (result: string, hintsUsed: number, finalInning: number) => {
             console.log(`Game ended: ${result}, Hints used: ${hintsUsed}, Final Inning: ${finalInning}`);
@@ -124,11 +120,17 @@ const App: React.FC = () => {
             if (gameMode === 'daily') {
                 let rewardAmount = 0;
                 if (result === 'homerun') {
-                    // finalInning은 1부터 시작, 배열 인덱스는 0부터 시작
                     if (finalInning > 0 && finalInning <= DAILY_CHALLENGE_WGT_REWARDS.length) {
                         rewardAmount = DAILY_CHALLENGE_WGT_REWARDS[finalInning - 1];
                     }
+                } else if (gameMode === 'wgt') {
+                    if (result === 'homerun') {
+                        if (finalInning > 0 && finalInning <= WGT_MODE_REWARDS.length) {
+                            rewardAmount = WGT_MODE_REWARDS[finalInning - 1];
+                        }
+                    }
                 }
+                // Multiply by 1e18 if needed for on-chain integer representation
                 const requestBody = {
                     userAddress: walletAddress,
                     hintsUsed,
@@ -143,7 +145,7 @@ const App: React.FC = () => {
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message || 'API request failed');
                     console.log("API call successful:", data);
-                    // 필요하다면 fetchBalances() 호출
+                    fetchBalances(); // Re-fetch after transaction
                 } catch (error) {
                     console.error("API call failed:", error);
                 }
@@ -154,6 +156,27 @@ const App: React.FC = () => {
         },
         [gameMode, walletAddress]
     );
+
+    const handleWGTModeStart = async () => {
+      if (freePlayAvailable) {
+        startGame('wgt');
+      } else if (wgt >= 1) {
+        // Call backend relayer to deduct 1 WGT on-chain
+        const res = await fetch('/api/deduct-wgt', {
+          method: 'POST',
+          body: JSON.stringify({ userAddress: walletAddress, amount: 1 }),
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (res.ok) {
+          setWgt(wgt - 1);
+          startGame('wgt');
+        } else {
+          // Show error toast
+        }
+      } else {
+        // Show "Not enough WGT" toast
+      }
+    };
 
     const contextValue: GameContextType = useMemo(() => ({
         wgt,
@@ -173,7 +196,6 @@ const App: React.FC = () => {
         setTheme,
     }), [wgt, startGame, quitGame, t, language, isLanguageModalOpen, isHelpModalOpen, walletAddress, theme]);
 
-    // ★★★ 2. 로그인 전용 뷰(컴포넌트) 정의 ★★★
     const AuthView = () => (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <h1 className="text-4xl font-bold text-center font-orbitron">
@@ -183,21 +205,32 @@ const App: React.FC = () => {
                 Please sign in with your World ID to play the game and manage your assets.
             </p>
             <IDKitWidget
+                ref={idKitRef}
                 app_id="app_e18331f89f35a634aab08d5cdfc15b2c"
                 action="game-login"
                 onSuccess={handleIDKitSuccess}
                 credential_types={['orb']}
             >
-                {({ open }) => <Button onClick={open}>Sign in with World ID</Button>}
+                {() => <span>{t('common.loading')}</span>}
             </IDKitWidget>
         </div>
     );
+
+    useEffect(() => {
+        if (!isLanguageModalOpen && isFirstTimeUser) {
+            setIsHelpModalOpen(true);
+        }
+    }, [isLanguageModalOpen, isFirstTimeUser]);
+
+    const handleHelpModalClose = () => {
+        setIsHelpModalOpen(false);
+        setIsFirstTimeUser(false);
+    };
 
     return (
         <GameContext.Provider value={contextValue}>
             <div className="min-h-screen bg-surface-base font-sans flex items-center justify-center p-4">
                 <div className="w-full max-w-md mx-auto bg-surface-raised rounded-2xl shadow-2xl overflow-hidden border-2 border-surface-inset flex flex-col" style={{height: '90vh', maxHeight: '800px'}}>
-                    {/* ★★★ 3. 로그인 여부에 따라 렌더링 분기 ★★★ */}
                     {!walletAddress ? (
                         <AuthView />
                     ) : screen === 'game' && gameMode ? (
@@ -208,7 +241,7 @@ const App: React.FC = () => {
                 </div>
             </div>
             <LanguageSelectionModal isOpen={isLanguageModalOpen} />
-            <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+            <HelpModal isOpen={isHelpModalOpen} onClose={handleHelpModalClose} />
         </GameContext.Provider>
     );
 };

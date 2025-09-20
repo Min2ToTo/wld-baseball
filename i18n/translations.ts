@@ -115,7 +115,7 @@ const enTranslations: Translation = {
     },
     currency: {
         title: "Currency Guide",
-        wgt: "WGT: A utility token used for in-game hints. Earn it by winning Daily Challenges or through friend referrals.",
+        wgt: "WGT: The World Genius Token is a utility token required to play WGT Mode and use hints. Earn it by winning your free daily challenge or through friend referrals.",
     },
     rewards: {
         title: "Daily Challenge Rewards",
@@ -236,7 +236,7 @@ const koTranslations: Translation = {
         },
         currency: {
             title: "게임 재화 안내",
-            wgt: "WGT: 게임 내 힌트를 사용하는 데 필요한 유틸리티 토큰입니다. 오늘의 도전에서 승리하거나 친구 추천으로 획득하세요.",
+            wgt: "WGT: World Genius Token은 WGT 모드를 플레이하고 힌트를 사용하는데 필요한 유틸리티 토큰입니다. 하루에 한번 무료로 도전하여 승리하거나 친구 추천으로 획득하세요."
         },
         rewards: {
             title: "오늘의 도전 보상",

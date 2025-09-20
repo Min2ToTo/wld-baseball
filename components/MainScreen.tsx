@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { Button } from './ui/Button';
