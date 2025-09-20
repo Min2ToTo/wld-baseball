@@ -11,6 +11,7 @@ import { Button } from './components/ui/Button';
 import { ethers } from 'ethers';
 import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, SEPOLIA_RPC_URL } from './constants';
 import { DAILY_CHALLENGE_WGT_REWARDS, WGT_MODE_REWARDS } from './constants';
+import { LoadingSpinner } from './components/common'; // adjust path if needed
 
 declare global {
   interface Window { ethereum?: any }
@@ -26,6 +27,7 @@ const App: React.FC = () => {
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [wgt, setWgt] = useState(0);
     const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const idKitRef = useRef<IDKitWidgetRef>(null);
     
     useEffect(() => {
@@ -216,6 +218,12 @@ const App: React.FC = () => {
         </div>
     );
 
+    const LoadingView = () => (
+        <div className="flex items-center justify-center h-full">
+            <LoadingSpinner />
+        </div>
+    );
+
     useEffect(() => {
         if (!isLanguageModalOpen && isFirstTimeUser) {
             setIsHelpModalOpen(true);
@@ -231,10 +239,12 @@ const App: React.FC = () => {
         <GameContext.Provider value={contextValue}>
             <div className="min-h-screen bg-surface-base font-sans flex items-center justify-center p-4">
                 <div className="w-full max-w-md mx-auto bg-surface-raised rounded-2xl shadow-2xl overflow-hidden border-2 border-surface-inset flex flex-col" style={{height: '90vh', maxHeight: '800px'}}>
-                    {!walletAddress ? (
+                    {isLoading ? (
+                        <LoadingView />
+                    ) : !walletAddress ? (
                         <AuthView />
                     ) : screen === 'game' && gameMode ? (
-                        <GameScreen mode={gameMode} />
+                        <GameScreen mode={gameMode} onGameEnd={quitGame} />
                     ) : (
                         <MainScreen />
                     )}

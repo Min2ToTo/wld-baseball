@@ -128,7 +128,7 @@ const enTranslations: Translation = {
 
 const koTranslations: Translation = {
     common: {
-      title: "WLD 베이스볼",
+      title: "World Baseball", // 기존 "WLD 베이스볼"에서 변경
       wgt: "WGT: {{count}}",
       returnToMain: "메인으로 돌아가기",
       goBack: "뒤로가기",
