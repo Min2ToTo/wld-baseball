@@ -1,4 +1,8 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import { ethers } from 'ethers';
+import { IDKitWidget, ISuccessResult, IDKitWidgetRef } from '@worldcoin/idkit';
+import { LoadingSpinner } from './components/common';
+import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, SEPOLIA_RPC_URL } from './constants';
 import { GameScreen } from './components/GameScreen';
 import { MainScreen } from './components/MainScreen';
 import { GameContext, GameContextType } from './contexts/GameContext';
@@ -6,18 +10,15 @@ import { GameMode, Language, Theme } from './types';
 import { translations } from './i18n/translations';
 import { LanguageSelectionModal } from './components/modals/LanguageSelectionModal';
 import { HelpModal } from './components/modals/HelpModal';
-import { IDKitWidget, ISuccessResult, IDKitWidgetRef } from '@worldcoin/idkit';
 import { Button } from './components/ui/Button';
-import { ethers } from 'ethers';
-import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, SEPOLIA_RPC_URL } from './constants';
-import { DAILY_CHALLENGE_WGT_REWARDS, WGT_MODE_REWARDS } from './constants';
-import { LoadingSpinner } from './components/common';
 
 declare global {
   interface Window { ethereum?: any }
 }
 
 const App: React.FC = () => {
+    // --- State ---
+    const [isLoading, setIsLoading] = useState(false); // Default to false
     const [screen, setScreen] = useState<'main' | 'game'>('main');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [language, setLanguage] = useState<Language>('en');
@@ -27,64 +28,49 @@ const App: React.FC = () => {
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [wgt, setWgt] = useState(0);
     const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
     const idKitRef = useRef<IDKitWidgetRef>(null);
-    
-    useEffect(() => {
-        const savedLang = localStorage.getItem('wld-baseball-lang') as Language;
-        if (savedLang && translations[savedLang]) {
-            setLanguage(savedLang);
-        } else {
-            setIsLanguageModalOpen(true);
+
+    // --- handleIDKitSuccess manages authentication and data fetching ---
+    const handleIDKitSuccess = async (result: ISuccessResult) => {
+        console.log("IDKit Authentication Success:", result);
+        setIsLoading(true); // Start loading AFTER user verifies
+
+        let foundAddress: string | null = null;
+        if (result.credential_payload) {
+            for (const key in result.credential_payload) {
+                if (key.startsWith('eip155:')) {
+                    foundAddress = result.credential_payload[key].address;
+                    break;
+                }
+            }
         }
 
-        const savedTheme = localStorage.getItem('wld-baseball-theme') as Theme;
-        if (savedTheme) {
-            setTheme(savedTheme);
-        }
-    }, []);
-    
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('wld-baseball-theme', theme);
-    }, [theme]);
-
-    useEffect(() => {
-        if (!walletAddress) return;
-
-        const fetchBalances = async () => {
-            console.log(`Attempting to fetch balances for ${walletAddress}...`);
+        if (foundAddress) {
             try {
+                // Fetch on-chain data now
                 const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC_URL);
-                
                 const contract = new ethers.Contract(WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, provider);
-                
-                const wgtBalance = await contract.balanceOf(walletAddress);
+                const wgtBalance = await contract.balanceOf(foundAddress);
                 const formattedBalance = Number(ethers.formatUnits(wgtBalance, 18));
                 
-                console.log('Successfully fetched balance from contract:', formattedBalance);
+                console.log('Successfully fetched balance:', formattedBalance);
                 setWgt(formattedBalance);
-
             } catch (error) {
-                console.error("Could not fetch balance from contract. Check RPC URL and contract address.", error);
+                console.error("Could not fetch balance from contract.", error);
                 setWgt(0); 
+            } finally {
+                // Set walletAddress and stop loading, which will render the MainScreen
+                setWalletAddress(foundAddress);
+                setIsLoading(false); 
             }
-        };
-
-        fetchBalances();
-    }, [walletAddress]);
-    
-    const handleIDKitSuccess = (result: ISuccessResult) => {
-        if (result.nullifier_hash) {
-            const tempId = '0x' + result.nullifier_hash.slice(0, 40);
-            setWalletAddress(tempId);
-            console.log('Temporary user identifier set from nullifier_hash:', tempId);
         } else {
-            alert("nullifier_hash not found. Login failed.");
+            console.error("Could not find wallet address in IDKit result.");
+            alert("Could not extract a valid wallet address.");
+            setIsLoading(false); // Stop loading on failure
         }
     };
 
-    const t = useCallback((key: string, params?: { [key: string]: string | number }) => {
+    const t = (key: string, params?: { [key: string]: string | number }) => {
         const keys = key.split('.');
         let result: any = translations[language];
         for (const k of keys) {
@@ -108,56 +94,53 @@ const App: React.FC = () => {
         }
         
         return result;
-    }, [language]);
+    };
 
-    const startGame = useCallback((mode: GameMode) => {
+    const startGame = (mode: GameMode) => {
         setGameMode(mode);
         setScreen('game');
-    }, []);
+    };
 
-    const quitGame = useCallback(
-        async (result: string, hintsUsed: number, finalInning: number) => {
-            console.log(`Game ended: ${result}, Hints used: ${hintsUsed}, Final Inning: ${finalInning}`);
+    const quitGame = async (result: string, hintsUsed: number, finalInning: number) => {
+        console.log(`Game ended: ${result}, Hints used: ${hintsUsed}, Final Inning: ${finalInning}`);
 
-            if (gameMode === 'daily') {
-                let rewardAmount = 0;
-                if (result === 'homerun') {
-                    if (finalInning > 0 && finalInning <= DAILY_CHALLENGE_WGT_REWARDS.length) {
-                        rewardAmount = DAILY_CHALLENGE_WGT_REWARDS[finalInning - 1];
-                    }
-                } else if (gameMode === 'wgt') {
-                    if (result === 'homerun') {
-                        if (finalInning > 0 && finalInning <= WGT_MODE_REWARDS.length) {
-                            rewardAmount = WGT_MODE_REWARDS[finalInning - 1];
-                        }
-                    }
+        if (gameMode === 'daily') {
+            let rewardAmount = 0;
+            if (result === 'homerun') {
+                if (finalInning > 0 && finalInning <= DAILY_CHALLENGE_WGT_REWARDS.length) {
+                    rewardAmount = DAILY_CHALLENGE_WGT_REWARDS[finalInning - 1];
                 }
-                // Multiply by 1e18 if needed for on-chain integer representation
-                const requestBody = {
-                    userAddress: walletAddress,
-                    hintsUsed,
-                    rewardAmount,
-                };
-                try {
-                    const response = await fetch('/api/adjust-balance', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody),
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'API request failed');
-                    console.log("API call successful:", data);
-                    fetchBalances(); // Re-fetch after transaction
-                } catch (error) {
-                    console.error("API call failed:", error);
+            } else if (gameMode === 'wgt') {
+                if (result === 'homerun') {
+                    if (finalInning > 0 && finalInning <= WGT_MODE_REWARDS.length) {
+                        rewardAmount = WGT_MODE_REWARDS[finalInning - 1];
+                    }
                 }
             }
+            // Multiply by 1e18 if needed for on-chain integer representation
+            const requestBody = {
+                userAddress: walletAddress,
+                hintsUsed,
+                rewardAmount,
+            };
+            try {
+                const response = await fetch('/api/adjust-balance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'API request failed');
+                console.log("API call successful:", data);
+                fetchBalances(); // Re-fetch after transaction
+            } catch (error) {
+                console.error("API call failed:", error);
+            }
+        }
 
-            setGameMode(null);
-            setScreen('main');
-        },
-        [gameMode, walletAddress]
-    );
+        setGameMode(null);
+        setScreen('main');
+    };
 
     const handleWGTModeStart = async () => {
       if (freePlayAvailable) {
@@ -198,6 +181,7 @@ const App: React.FC = () => {
         setTheme,
     }), [wgt, startGame, quitGame, t, language, isLanguageModalOpen, isHelpModalOpen, walletAddress, theme]);
 
+    // --- AuthView ---
     const AuthView = () => (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <h1 className="text-4xl font-bold text-center font-orbitron">
@@ -213,28 +197,16 @@ const App: React.FC = () => {
                 onSuccess={handleIDKitSuccess}
                 credential_types={['orb']}
             >
-                {() => <span>{t('common.loading')}</span>}
+                {({ open }) => (
+                    <button className="btn btn-primary" onClick={open}>
+                        Sign in with World ID
+                    </button>
+                )}
             </IDKitWidget>
         </div>
     );
 
-    const LoadingView = () => (
-        <div className="flex items-center justify-center h-full">
-            <LoadingSpinner />
-        </div>
-    );
-
-    useEffect(() => {
-        if (!isLanguageModalOpen && isFirstTimeUser) {
-            setIsHelpModalOpen(true);
-        }
-    }, [isLanguageModalOpen, isFirstTimeUser]);
-
-    const handleHelpModalClose = () => {
-        setIsHelpModalOpen(false);
-        setIsFirstTimeUser(false);
-    };
-
+    // --- Main Rendering Logic ---
     return (
         <GameContext.Provider value={contextValue}>
             <div className="min-h-screen bg-surface-base font-sans flex items-center justify-center p-4">
