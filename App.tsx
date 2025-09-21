@@ -137,7 +137,6 @@ const App: React.FC = () => {
                 Please sign in with your World ID to play the game and manage your assets.
             </p>
             <IDKitWidget
-                ref={idKitRef}
                 app_id={WLD_APP_ID}
                 action={WLD_ACTION_ID}
                 onSuccess={handleIDKitSuccess}
