@@ -21,10 +21,10 @@ const App: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false); // 초기값 false!
 
     // 환경변수에서 config 읽기 (테스트/운영 분기)
-    const WLD_APP_ID = import.meta.env.VITE_WLD_APP_ID!;
-    const WLD_ACTION_ID = import.meta.env.VITE_WLD_ACTION_ID!;
-    const WGT_CONTRACT_ADDRESS = import.meta.env.VITE_WGT_CONTRACT_ADDRESS!;
-    const RPC_URL = import.meta.env.VITE_RPC_URL!;
+    const WLD_APP_ID = "app_e18331f89f35a634aab08d5cdfc15b2c";
+    const WLD_ACTION_ID = "game-login";
+    const WGT_CONTRACT_ADDRESS = "0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8";
+    const RPC_URL = "https://rpc.sepolia.org";
     const [screen, setScreen] = useState<'main' | 'game'>('main');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [language, setLanguage] = useState<Language>('en');
