@@ -175,3 +175,7 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+console.log("WLD_APP_ID", WLD_APP_ID);
+console.log("WGT_CONTRACT_ADDRESS", WGT_CONTRACT_ADDRESS);
+console.log("RPC_URL", RPC_URL);
