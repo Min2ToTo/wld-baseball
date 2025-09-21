@@ -145,10 +145,7 @@ const App: React.FC = () => {
             >
                 {({ open }) => (
                     <Button onClick={open} className="w-full py-3 text-lg font-bold bg-black text-white rounded-lg shadow-md hover:bg-gray-900 transition">
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5em' }}>
-                            <img src="/world-id-icon.svg" alt="World ID" style={{ width: 24, height: 24 }} />
-                            Sign in with World ID
-                        </span>
+                        Sign in with World ID
                     </Button>
                 )}
             </IDKitWidget>
