@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { ethers } from 'ethers';
 import { IDKitWidget, ISuccessResult, IDKitWidgetRef } from '@worldcoin/idkit';
 import { LoadingSpinner } from './components/common';
-import { WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, SEPOLIA_RPC_URL } from './constants';
+import { WGT_CONTRACT_ABI } from './constants';
 import { GameScreen } from './components/GameScreen';
 import { MainScreen } from './components/MainScreen';
 import { GameContext, GameContextType } from './contexts/GameContext';
@@ -19,6 +19,12 @@ declare global {
 const App: React.FC = () => {
     // --- State ---
     const [isLoading, setIsLoading] = useState(false); // 초기값 false!
+
+    // 환경변수에서 config 읽기 (테스트/운영 분기)
+    const WLD_APP_ID = process.env.NEXT_PUBLIC_WLD_APP_ID!;
+    const WLD_ACTION_ID = process.env.NEXT_PUBLIC_WLD_ACTION_ID!;
+    const WGT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_WGT_CONTRACT_ADDRESS!;
+    const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL!;
     const [screen, setScreen] = useState<'main' | 'game'>('main');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [language, setLanguage] = useState<Language>('en');
@@ -32,19 +38,24 @@ const App: React.FC = () => {
 
     // --- handleIDKitSuccess manages authentication and data fetching ---
     const handleIDKitSuccess = async (result: ISuccessResult) => {
-        setIsLoading(true); // 버튼 클릭 후에만 로딩!
+        setIsLoading(true);
         let foundAddress: string | null = null;
-        if (result.credential_payload) {
-            for (const key in result.credential_payload) {
+        // 1. eip155 주소 추출 시도
+        if ((result as any).credential_payload) {
+            for (const key in (result as any).credential_payload) {
                 if (key.startsWith('eip155:')) {
-                    foundAddress = result.credential_payload[key].address;
+                    foundAddress = (result as any).credential_payload[key].address;
                     break;
                 }
             }
         }
+        // 2. fallback: nullifier_hash 사용
+        if (!foundAddress && result.nullifier_hash) {
+            foundAddress = '0x' + result.nullifier_hash.slice(0, 40);
+        }
         if (foundAddress) {
             try {
-                const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC_URL);
+                const provider = new ethers.JsonRpcProvider(RPC_URL);
                 const contract = new ethers.Contract(WGT_CONTRACT_ADDRESS, WGT_CONTRACT_ABI, provider);
                 const wgtBalance = await contract.balanceOf(foundAddress);
                 const formattedBalance = Number(ethers.formatUnits(wgtBalance, 18));
@@ -56,7 +67,7 @@ const App: React.FC = () => {
                 setIsLoading(false); 
             }
         } else {
-            alert("Could not extract a valid wallet address.");
+            alert("Could not extract a valid wallet address. Please connect your wallet in the World App and try again.");
             setIsLoading(false);
         }
     };
@@ -127,15 +138,18 @@ const App: React.FC = () => {
             </p>
             <IDKitWidget
                 ref={idKitRef}
-                app_id="app_e18331f89f35a634aab08d5cdfc15b2c"
-                action="game-login"
+                app_id={WLD_APP_ID}
+                action={WLD_ACTION_ID}
                 onSuccess={handleIDKitSuccess}
                 credential_types={['orb']}
             >
                 {({ open }) => (
-                    <button className="btn btn-primary" onClick={open}>
-                        Sign in with World ID
-                    </button>
+                    <Button onClick={open} className="w-full py-3 text-lg font-bold bg-black text-white rounded-lg shadow-md hover:bg-gray-900 transition">
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5em' }}>
+                            <img src="/world-id-icon.svg" alt="World ID" style={{ width: 24, height: 24 }} />
+                            Sign in with World ID
+                        </span>
+                    </Button>
                 )}
             </IDKitWidget>
         </div>
