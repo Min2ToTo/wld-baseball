@@ -1,4 +1,4 @@
-export const SEPOLIA_RPC_URL = "https://rpc.sepolia.org";
+export const SEPOLIA_RPC_URL = process.env.NEXT_PUBLIC_RPC_URL!;
 
 export const SECRET_CODE_LENGTH = 3;
 export const MAX_GUESSES = 9;
@@ -20,8 +20,7 @@ export const DAILY_CHALLENGE_WGT_REWARDS = [
 
 export const WGT_MODE_REWARDS = [100, 50, 10, 5, 2, 1, 0.5, 0.2, 0.1]; // index 0 = 1st inning
 
-// 1. 여기에 Sepolia 테스트넷에 배포한 WGT 스마트 컨트랙트의 주소를 붙여넣으세요.
-export const WGT_CONTRACT_ADDRESS = "0xd9145CCE52D386f254917e481eB44e9943F39138"; 
+export const WGT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_WGT_CONTRACT_ADDRESS!;
 
 // 2. 여기에 Remix에서 복사한 ABI JSON 데이터를 붙여넣으세요.
 // TypeScript에서 ABI의 타입을 명확히 하기 위해 'as const'를 붙여주는 것이 좋습니다.
