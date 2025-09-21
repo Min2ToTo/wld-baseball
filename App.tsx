@@ -21,10 +21,10 @@ const App: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false); // 초기값 false!
 
     // 환경변수에서 config 읽기 (테스트/운영 분기)
-    const WLD_APP_ID = process.env.NEXT_PUBLIC_WLD_APP_ID!;
-    const WLD_ACTION_ID = process.env.NEXT_PUBLIC_WLD_ACTION_ID!;
-    const WGT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_WGT_CONTRACT_ADDRESS!;
-    const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL!;
+    const WLD_APP_ID = import.meta.env.VITE_WLD_APP_ID!;
+    const WLD_ACTION_ID = import.meta.env.VITE_WLD_ACTION_ID!;
+    const WGT_CONTRACT_ADDRESS = import.meta.env.VITE_WGT_CONTRACT_ADDRESS!;
+    const RPC_URL = import.meta.env.VITE_RPC_URL!;
     const [screen, setScreen] = useState<'main' | 'game'>('main');
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
     const [language, setLanguage] = useState<Language>('en');
